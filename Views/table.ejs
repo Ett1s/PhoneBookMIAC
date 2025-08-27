@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Телефонный справочник</title>
+  <style>
+    #modal { display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.3); align-items:center; justify-content:center; }
+    #modal > div { background:#fff; padding:20px; border-radius:8px; min-width:300px; position:relative; }
+    #closeModal { position:absolute; right:10px; top:5px; cursor:pointer; }
+  </style>
+</head>
+<body>
+  <div>
+    <span>Пользователь: <%= user.username %> (<%= user.role %>)</span>
+    <a href="/logout">Выйти</a>
+  </div>
+  <button id="filterBtn">Фильтр</button>
+  <% if (user.role === 'admin') { %>
+    <button id="addBtn">Добавить запись</button>
+    <!-- Модальное окно -->
+    <div id="modal">
+      <div>
+        <span id="closeModal">&times;</span>
+        <form id="addForm">
+          <% for(let key in rows[0]) { if(key !== 'id') { %>
+            <div>
+              <label><%= key %>:</label>
+              <input name="<%= key %>" required>
+            </div>
+          <% } } %>
+          <button type="submit">Сохранить</button>
+        </form>
+      </div>
+    </div>
+  <% } %>
+  <div id="tableContainer">
+    <table border="1">
+      <tr>
+        <% for(let key in rows[0]) { %>
+          <th><%= key %></th>
+        <% } %>
+      </tr>
+      <% rows.forEach(row => { %>
+        <tr>
+          <% for(let key in row) { %>
+            <td 
+              contenteditable="<%= user.role === 'admin' && key !== 'id' %>" 
+              data-id="<%= row.id %>" 
+              data-key="<%= key %>">
+              <%= row[key] %>
+            </td>
+          <% } %>
+        </tr>
+      <% }) %>
+    </table>
+  </div>
+  <script>
+    const USER_ROLE = "<%= user.role %>";
+    // Фильтр
+    const filterBtn = document.getElementById('filterBtn');
+    let filterActive = false;
+    let originalTable = document.getElementById('tableContainer').innerHTML;
+
+    filterBtn.addEventListener('click', function() {
+      const tableContainer = document.getElementById('tableContainer');
+      if (!filterActive) {
+        const table = tableContainer.querySelector('table');
+        const headerRow = table.rows[0];
+        const filterRow = table.insertRow(1);
+        for (let i = 0; i < headerRow.cells.length; i++) {
+          const cell = filterRow.insertCell(i);
+          cell.innerHTML = '<input type="text" style="width: 90%" data-col="' + i + '">';
+        }
+        filterRow.querySelectorAll('input').forEach(input => {
+          input.addEventListener('input', function() {
+            const filters = Array.from(filterRow.querySelectorAll('input')).map(inp => inp.value.toLowerCase());
+            for (let r = 2; r < table.rows.length; r++) {
+              let show = true;
+              for (let c = 0; c < filters.length; c++) {
+                const cellText = table.rows[r].cells[c].textContent.toLowerCase();
+                if (filters[c] && !cellText.includes(filters[c])) {
+                  show = false;
+                  break;
+                }
+              }
+              table.rows[r].style.display = show ? '' : 'none';
+            }
+          });
+        });
+        filterActive = true;
+      } else {
+        tableContainer.innerHTML = originalTable;
+        filterActive = false;
+      }
+    });
+
+    if (USER_ROLE === 'admin') {
+      // Модальное окно
+      const modal = document.getElementById('modal');
+      const addBtn = document.getElementById('addBtn');
+      const closeModal = document.getElementById('closeModal');
+      addBtn.onclick = () => modal.style.display = 'flex';
+      closeModal.onclick = () => modal.style.display = 'none';
+      window.onclick = (e) => { if(e.target === modal) modal.style.display = 'none'; }
+
+      // Отправка формы
+      document.getElementById('addForm').onsubmit = async function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        const data = {};
+        formData.forEach((v, k) => data[k] = v);
+        const res = await fetch('/add', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify(data)
+        });
+        if(res.ok) location.reload();
+        else alert('Ошибка добавления');
+      }
+
+      // Inline редактирование
+        document.querySelectorAll('td[contenteditable="true"]').forEach(td => {
+        td.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') e.preventDefault();
+        });
+        td.addEventListener('blur', async function() {
+            const id = this.dataset.id;
+            const key = this.dataset.key;
+            let value = this.innerText.replace(/\s+/g, ' ').trim();
+            const res = await fetch('/edit', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ id, key, value })
+            });
+            if(!res.ok) alert('Ошибка сохранения');
+        });
+        });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Вход</title>
+</head>
+<body>
+  <h2>Вход</h2>
+  <form method="POST" action="/login">
+    <div>
+      <label>Логин:</label>
+      <input name="username" required>
+    </div>
+    <div>
+      <label>Пароль:</label>
+      <input name="password" type="password" required>
+    </div>
+    <button type="submit">Войти</button>
+  </form>
+  <% if (error) { %>
+    <div style="color:red"><%= error %></div>
+  <% } %>
+</body>
+</html>
