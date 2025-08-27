@@ -31,13 +31,11 @@ client.connect()
   .then(() => console.log('Подключено к PostgreSQL!'))
   .catch(err => console.error('Ошибка подключения:', err));
 
-// Middleware для проверки авторизации
 function requireAuth(req, res, next) {
   if (!req.session.user) return res.redirect('/login');
   next();
 }
 
-// Логин
 app.get('/login', (req, res) => {
   res.render('login', { error: null });
 });
@@ -64,7 +62,6 @@ app.get('/logout', (req, res) => {
   req.session.destroy(() => res.redirect('/login'));
 });
 
-// Главная страница
 app.get('/', requireAuth, async (req, res) => {
   try {
     const result = await client.query('SELECT * FROM users');
@@ -75,7 +72,6 @@ app.get('/', requireAuth, async (req, res) => {
   }
 });
 
-// Добавление записи (только admin)
 app.post('/add', requireAuth, async (req, res) => {
   if (req.session.user.role !== 'admin') return res.status(403).send('Нет доступа');
   try {
@@ -91,7 +87,6 @@ app.post('/add', requireAuth, async (req, res) => {
   }
 });
 
-// Редактирование записи (только admin)
 app.post('/edit', requireAuth, async (req, res) => {
   if (req.session.user.role !== 'admin') return res.status(403).send('Нет доступа');
   try {
